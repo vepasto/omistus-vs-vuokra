@@ -20,7 +20,17 @@ export interface YearResult {
     ownerDebt: number;
 }
 
-export const calculateWealth = (inputs: CalculationInputs): YearResult[] => {
+export interface MonthlyAnalysis {
+    ownerTotalMonthly: number;
+    interestPayment: number;
+    principalPayment: number;
+    maintenance: number;
+    renterTotalMonthly: number;
+    difference: number;
+    saver: 'owner' | 'renter';
+}
+
+export const calculateWealth = (inputs: CalculationInputs): { yearlyResults: YearResult[]; monthlyAnalysis: MonthlyAnalysis } => {
     const safe = (val: number) => (Number.isNaN(val) ? 0 : val);
 
     const homePrice = safe(inputs.homePrice);
@@ -42,26 +52,16 @@ export const calculateWealth = (inputs: CalculationInputs): YearResult[] => {
     const transferTax = homePrice * (transferTaxPercent / 100);
     const initialCashNeeded = downPayment + transferTax;
 
-    // Owner starts with Home Equity (Down Payment) - Transfer Tax (Lost cost)
-    // Wait, wealth calculation:
-    // Owner Wealth = Home Value - Remaining Loan + Investments
-    // Renter Wealth = Investments (Initial Cash + Monthly Savings)
-
-    // Scenario: Both start with `initialCashNeeded` amount of cash.
-    // Owner spends it on DownPayment + Tax.
-    // Renter invests it all.
-
     let ownerHomeValue = homePrice;
     let ownerLoanBalance = loanAmount;
     let ownerInvestments = 0;
-
     let renterInvestments = initialCashNeeded;
 
     // Monthly Calculations
     const monthlyRate = loanInterestRate / 100 / 12;
     const numberOfPayments = loanTermYears * 12;
 
-    // Mortgage Payment (Annuity)
+    // Mortgage Payment (Annuity) - Initial
     let monthlyMortgagePayment = 0;
     if (monthlyRate > 0) {
         monthlyMortgagePayment =
@@ -71,6 +71,34 @@ export const calculateWealth = (inputs: CalculationInputs): YearResult[] => {
         monthlyMortgagePayment = loanAmount / numberOfPayments;
     }
 
+    // Capture the initial monthly breakdown for the analysis
+    const initialInterest = loanAmount * monthlyRate;
+    const initialPrincipal = monthlyMortgagePayment - initialInterest;
+
+    const initialOwnerTotal = monthlyMortgagePayment + maintenanceFeeMonthly;
+    const initialRenterTotal = rentMonthly;
+    const initialDiff = initialRenterTotal - initialOwnerTotal;
+
+    const monthlyAnalysis: MonthlyAnalysis = {
+        ownerTotalMonthly: Math.round(initialOwnerTotal),
+        interestPayment: Math.round(initialInterest),
+        principalPayment: Math.round(initialPrincipal),
+        maintenance: Math.round(maintenanceFeeMonthly),
+        renterTotalMonthly: Math.round(initialRenterTotal),
+        difference: Math.round(Math.abs(initialDiff)),
+        saver: initialDiff > 0 ? 'owner' : 'renter'
+    };
+
+    // Push Year 0 (Starting Position)
+    results.push({
+        year: 0,
+        ownerWealth: Math.round(homePrice - loanAmount), // Equity (Down Payment)
+        renterWealth: Math.round(initialCashNeeded), // Cash (Down Payment + Tax)
+        ownerEquity: Math.round(homePrice - loanAmount),
+        renterSavings: Math.round(initialCashNeeded),
+        ownerDebt: Math.round(loanAmount),
+    });
+
     // Monthly investment return rates
     const monthlyInvReturn = Math.pow(1 + investmentReturnRate / 100, 1 / 12) - 1;
     const monthlyAppreciation = Math.pow(1 + appreciationRate / 100, 1 / 12) - 1;
@@ -78,11 +106,9 @@ export const calculateWealth = (inputs: CalculationInputs): YearResult[] => {
     for (let year = 1; year <= years; year++) {
         for (let month = 1; month <= 12; month++) {
             // 1. Owner Costs
-            // Interest portion
             const interestPayment = ownerLoanBalance * monthlyRate;
             const principalPayment = monthlyMortgagePayment - interestPayment;
 
-            // If loan is paid off
             let actualMortgagePayment = monthlyMortgagePayment;
             if (ownerLoanBalance <= 0) {
                 actualMortgagePayment = 0;
@@ -94,19 +120,14 @@ export const calculateWealth = (inputs: CalculationInputs): YearResult[] => {
 
             // 2. Renter Costs
             const renterTotalMonthlyCost = rentMonthly;
-            // Note: Rent increases? Keep simple for now, or add inflation? 
-            // Let's assume rent stays constant or strictly user input for simplicity unless asked.
 
             // 3. Difference
             const diff = renterTotalMonthlyCost - ownerTotalMonthlyCost;
 
             if (diff > 0) {
-                // Renter costs more -> Owner saves/invests difference
                 ownerInvestments = (ownerInvestments * (1 + monthlyInvReturn)) + diff;
                 renterInvestments = (renterInvestments * (1 + monthlyInvReturn));
             } else {
-                // Owner costs more -> Renter saves/invests difference (Positive diff for renter)
-                // diff is negative here, so we subtract it (add positive value) to renter
                 renterInvestments = (renterInvestments * (1 + monthlyInvReturn)) + (-diff);
                 ownerInvestments = (ownerInvestments * (1 + monthlyInvReturn));
             }
@@ -130,5 +151,5 @@ export const calculateWealth = (inputs: CalculationInputs): YearResult[] => {
         });
     }
 
-    return results;
+    return { yearlyResults: results, monthlyAnalysis };
 };

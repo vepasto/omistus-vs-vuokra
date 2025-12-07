@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { calculateWealth, type CalculationInputs, type YearResult } from '../utils/calculateWealth';
+import { calculateWealth, type CalculationInputs, type YearResult, type MonthlyAnalysis } from '../utils/calculateWealth';
+import { MonthlyAnalysisCard } from './MonthlyAnalysisCard';
 import { InputForm } from './InputForm';
 import { WealthChart } from './WealthChart';
 import { ResultsSummary } from './ResultsSummary';
@@ -20,10 +21,12 @@ const initialInputs: CalculationInputs = {
 export const Calculator: React.FC = () => {
     const [inputs, setInputs] = useState<CalculationInputs>(initialInputs);
     const [results, setResults] = useState<YearResult[]>([]);
+    const [monthlyAnalysis, setMonthlyAnalysis] = useState<MonthlyAnalysis | null>(null);
 
     useEffect(() => {
-        const res = calculateWealth(inputs);
-        setResults(res);
+        const { yearlyResults, monthlyAnalysis } = calculateWealth(inputs);
+        setResults(yearlyResults);
+        setMonthlyAnalysis(monthlyAnalysis);
     }, [inputs]);
 
     return (
@@ -33,6 +36,11 @@ export const Calculator: React.FC = () => {
             </div>
             <div className="main-content">
                 <ResultsSummary data={results} />
+
+                {monthlyAnalysis && (
+                    <MonthlyAnalysisCard analysis={monthlyAnalysis} />
+                )}
+
                 <div className="chart-container card">
                     <h3>Varallisuuden kehitys</h3>
                     <WealthChart data={results} />
