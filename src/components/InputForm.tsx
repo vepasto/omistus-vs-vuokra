@@ -88,12 +88,22 @@ export const InputForm: React.FC<Props> = ({ inputs, onChange }) => {
                     />
                 </div>
                 <div className="input-item">
-                    <label>Verrokkivuokra (€/kk)</label>
+                    <label>Kuukausivuokra (€)</label>
                     <input
                         type="number"
                         name="rentMonthly"
                         value={val(inputs.rentMonthly)}
                         onChange={handleChange}
+                    />
+                </div>
+                <div className="input-item">
+                    <label>Vuokrankorotus (%)</label>
+                    <input
+                        type="number"
+                        name="rentIncreasePercent"
+                        value={val(inputs.rentIncreasePercent)}
+                        onChange={handleChange}
+                        step="0.1"
                     />
                 </div>
             </section>

@@ -7,6 +7,7 @@ export interface CalculationInputs {
     transferTaxPercent: number; // Varainsiirtovero
     appreciationRate: number; // Asunnon arvonnousu
     rentMonthly: number;
+    rentIncreasePercent: number; // Vuokrankorotus
     investmentReturnRate: number; // Sijoitusten tuotto-odotus
     years: number;
 }
@@ -40,7 +41,8 @@ export const calculateWealth = (inputs: CalculationInputs): { yearlyResults: Yea
     const maintenanceFeeMonthly = safe(inputs.maintenanceFeeMonthly);
     const transferTaxPercent = safe(inputs.transferTaxPercent);
     const appreciationRate = safe(inputs.appreciationRate);
-    const rentMonthly = safe(inputs.rentMonthly);
+    const initialRentMonthly = safe(inputs.rentMonthly);
+    const rentIncreasePercent = safe(inputs.rentIncreasePercent);
     const investmentReturnRate = safe(inputs.investmentReturnRate);
     const years = safe(inputs.years);
 
@@ -76,7 +78,7 @@ export const calculateWealth = (inputs: CalculationInputs): { yearlyResults: Yea
     const initialPrincipal = monthlyMortgagePayment - initialInterest;
 
     const initialOwnerTotal = monthlyMortgagePayment + maintenanceFeeMonthly;
-    const initialRenterTotal = rentMonthly;
+    const initialRenterTotal = initialRentMonthly;
     const initialDiff = initialRenterTotal - initialOwnerTotal;
 
     const monthlyAnalysis: MonthlyAnalysis = {
@@ -103,7 +105,16 @@ export const calculateWealth = (inputs: CalculationInputs): { yearlyResults: Yea
     const monthlyInvReturn = Math.pow(1 + investmentReturnRate / 100, 1 / 12) - 1;
     const monthlyAppreciation = Math.pow(1 + appreciationRate / 100, 1 / 12) - 1;
 
+    let currentRentMonthly = initialRentMonthly;
+
     for (let year = 1; year <= years; year++) {
+        // Apply rent increase at the start of each year (except very first month of year 1? 
+        // Usually rent increases happen once a year. Let's say it increases AT THE END of the year for next year,
+        // or starting from year 2. Let's keep year 1 flat as per input, then increase.)
+        if (year > 1) {
+            currentRentMonthly = currentRentMonthly * (1 + rentIncreasePercent / 100);
+        }
+
         for (let month = 1; month <= 12; month++) {
             // 1. Owner Costs
             const interestPayment = ownerLoanBalance * monthlyRate;
@@ -119,7 +130,7 @@ export const calculateWealth = (inputs: CalculationInputs): { yearlyResults: Yea
             const ownerTotalMonthlyCost = actualMortgagePayment + maintenanceFeeMonthly;
 
             // 2. Renter Costs
-            const renterTotalMonthlyCost = rentMonthly;
+            const renterTotalMonthlyCost = currentRentMonthly;
 
             // 3. Difference
             const diff = renterTotalMonthlyCost - ownerTotalMonthlyCost;

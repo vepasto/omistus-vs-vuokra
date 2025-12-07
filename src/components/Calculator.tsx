@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { calculateWealth, type CalculationInputs, type YearResult, type MonthlyAnalysis } from '../utils/calculateWealth';
+import { useCalculatorState } from '../hooks/useCalculatorState';
 import { MonthlyAnalysisCard } from './MonthlyAnalysisCard';
 import { InputForm } from './InputForm';
 import { WealthChart } from './WealthChart';
@@ -14,12 +15,13 @@ const initialInputs: CalculationInputs = {
     transferTaxPercent: 1.5, // Check default for apartment? 1.5% for shares in housing company is common
     appreciationRate: 2.0,
     rentMonthly: 900,
+    rentIncreasePercent: 2.0,
     investmentReturnRate: 5.0,
     years: 30,
 };
 
 export const Calculator: React.FC = () => {
-    const [inputs, setInputs] = useState<CalculationInputs>(initialInputs);
+    const [inputs, setInputs] = useCalculatorState(initialInputs);
     const [results, setResults] = useState<YearResult[]>([]);
     const [monthlyAnalysis, setMonthlyAnalysis] = useState<MonthlyAnalysis | null>(null);
 
